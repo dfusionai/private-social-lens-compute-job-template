@@ -61,10 +61,9 @@ To transform this dummy data into the input `query_results.db` SQLite DB simply 
 - Compute Jobs are run as Docker containers inside of the Compute Engine TEE.
 - Docker container images ("Compute Instructions") must be approved for a given Data Refiner id by DLP owners through the Compute Instruction Registry smart contract before being submitted for processing via the Compute Engine API.
 - The Data Refiner id determines the schema that can be queried against, the granted permissions by the DLP owner, and the cost to access each queried data component (schema, table, column) of the query when running compute jobs.
-- Individual queries to the Query Engine are run outside of the Compute Job by the Compute Engine directly before invoking the Compute Job.
-- Input data is provided from the compute engine to the compute job container through a mounted `/mnt/input` directory.
-  - This directory contains a single `query_results.db` SQLite file downloaded from the Query Engine after a query has been successfully processed.
-  - A queryable `results` table is the only table in the mounted `query_results.db`. This table contains all of the queried data points of the query submitted to the Query Engine through the Compute Engine API.
+- Individual queries to the Query Engine are run directly inside of the Compute Job.
+- Query results are polled with the `QueryEngineClient` and downloaded as a `query_results.db` SQLite file after successful processing.
+  - A queryable `results` table is the only table in the mounted `query_results.db`. This table contains all of the queried data points of the query submitted to the Query Engine through the Compute Job.
   - *Example:*
 ```sql
 -- Refiner Schema:
@@ -86,9 +85,10 @@ SELECT locale FROM results;
 
 ### Example Job Query Result Processing Workflow
 
-1. Query data from `results` table of `/mnt/input/query_results.db` with SQLite.
-2. Run custom logic to process (transform / aggregate / …) query results.
-Write generated Artifacts to the `/mnt/output` directory for later download by the application builder / job owner wallet through the Compute Engine API.
+1. Retrieve injected input (by the Compute Engine) from environment variables with the `ContainerParams` class.
+2. Query data from the Query Engine with the `QueryEngineClient` helper.
+3. Implement custom logic to process (transform / aggregate / ...) query results through the `results` table of the downloaded SQLite `query_results.db`.
+4. Write generated Artifacts to the `/mnt/output` directory for later download by the application builder / job owner wallet through the Compute Engine API.
 
 ### Submitting Compute Instructions For DLP Approval
 
