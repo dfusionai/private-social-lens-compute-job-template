@@ -6,14 +6,14 @@ from typing import Dict, Any
 from query_engine_client import QueryEngineClient
 from container_params import ContainerParams, ContainerParamError
 
-def get_user_locales(db_path: Path) -> Dict[str, float]:
-    """Query the SQLite database and extract user_id: locale mapping.
+def get_user_data(db_path: Path) -> Dict[str, Dict[str, Any]]:
+    """Query the SQLite database and extract user data.
     
     Args:
         db_path: Path to the SQLite database file
         
     Returns:
-        Dictionary with user_id as keys and locale as values
+        Dictionary with UserID as keys and user data as values
         
     Raises:
         Exception: If there's an error connecting to or querying the database
@@ -22,17 +22,20 @@ def get_user_locales(db_path: Path) -> Dict[str, float]:
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
         
-        # Query user_id and locale from the results table
-        cursor.execute('SELECT user_id, locale FROM results')
+        # Query UserID, Source, and Status from the results table
+        cursor.execute('SELECT "UserID", "Source", "Status" FROM results')
         
-        # Create a dictionary with user_id as keys and locale as values
-        user_locales = {}
+        # Create a dictionary with UserID as keys and user data as values
+        user_data = {}
         for row in cursor.fetchall():
-            user_id, locale = row
-            user_locales[str(user_id)] = locale
+            user_id, source, status = row
+            user_data[str(user_id)] = {
+                "source": source,
+                "status": status
+            }
         
         conn.close()
-        return user_locales
+        return user_data
     except sqlite3.Error as e:
         print(f"SQLite error: {e}")
         raise
@@ -92,7 +95,12 @@ def execute_query(params: ContainerParams) -> bool:
     )
     
     if not query_result.success:
-        print(f"Error executing query: {query_result.error}")
+        error_msg = f"Error executing query: {query_result.error}"
+        if query_result.status_code:
+            error_msg += f" (Status code: {query_result.status_code})"
+        if query_result.data:
+            error_msg += f"\nResponse data: {json.dumps(query_result.data, indent=2)}"
+        print(error_msg)
         return False
         
     print(f"Query executed successfully, processing results from {params.db_path}")
@@ -104,7 +112,7 @@ def process_results(params: ContainerParams) -> None:
     Args:
         params: Container parameters
     """
-    user_data = get_user_locales(params.db_path)
+    user_data = get_user_data(params.db_path)
     
     if user_data:
         print(f"Found {len(user_data)} users in the database")
