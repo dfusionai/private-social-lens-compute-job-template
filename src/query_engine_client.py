@@ -5,6 +5,7 @@ import requests
 from typing import Any, Dict, Optional, List
 from dataclasses import dataclass
 import contextlib
+import json
 
 logger = logging.getLogger(__name__)
 
@@ -293,7 +294,13 @@ class QueryEngineClient:
             error_json = response.json()
             if "detail" in error_json:
                 error_detail += f", Detail: {error_json['detail']}"
+            if "message" in error_json:
+                error_detail += f", Message: {error_json['message']}"
+            if "error" in error_json:
+                error_detail += f", Error: {error_json['error']}"
+            # Include full response for debugging
+            error_detail += f", Full response: {json.dumps(error_json)}"
         except (ValueError, KeyError):
-            error_detail += f", Response: {response.text[:100]}"
+            error_detail += f", Raw response: {response.text}"
             
         return error_detail
