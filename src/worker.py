@@ -26,7 +26,7 @@ def get_chat_messages(db_path: Path) -> Dict[str, Dict[str, Any]]:
 
             # Query all messages with their related chat and submission info
             cursor.execute('''
-                SELECT SenderID FROM results LIMIT 10
+                SELECT * FROM results LIMIT 20
             ''')
 
             messages = {}
