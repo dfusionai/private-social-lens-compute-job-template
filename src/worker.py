@@ -6,74 +6,27 @@ from typing import Dict, Any
 from query_engine_client import QueryEngineClient
 from container_params import ContainerParams, ContainerParamError
 
-def get_chat_messages(db_path: Path) -> Dict[str, Dict[str, Any]]:
-    """Query the SQLite database and extract all chat messages with proper MessageID keys.
+def get_data(db_path: Path) -> Dict[str, Dict[str, Any]]:
+    """Fetch all rows from the 'results' table in the SQLite database.
+
+    Each row is returned as a dictionary with column names as keys.
 
     Args:
-        db_path: Path to the SQLite database file
+        db_path: Path to the SQLite database file.
 
     Returns:
-        Dictionary with MessageID as keys and message data as values
+        A list of dictionaries, each representing a row from the 'results' table.
 
     Raises:
-        sqlite3.Error: If there's a database error
-        Exception: For other unexpected errors
-    """
-    try:
-        with sqlite3.connect(db_path) as conn:
-            conn.row_factory = sqlite3.Row  # Allows fetching rows as dict-like
-            cursor = conn.cursor()
-
-            # Query all messages with their related chat and submission info
-            cursor.execute('''
-                SELECT * FROM results LIMIT 20
-            ''')
-
-            messages = {}
-            index_counter = 0
-            for row in cursor.fetchall():
-                row_dict = dict(row)
-                # Use the actual MessageID from schema as the key
-                # message_id = row_dict['MessageID']
-                # messages[message_id] = row_dict
-                messages[str(index_counter)] = row_dict
-                index_counter += 1
-
-            return messages
-
-    except sqlite3.Error as e:
-        print(f"SQLite error: {e}")
-        raise
-    except Exception as e:
-        print(f"Error querying database: {e}")
-        raise
-
-def get_submission_chats(db_path: Path) -> Dict[str, Dict[str, Any]]:
-    """Query the SQLite database and extract all submission chats.
-
-    Args:
-        db_path: Path to the SQLite database file
-
-    Returns:
-        Dictionary with SubmissionChatID as keys and chat data as values
-
-    Raises:
-        sqlite3.Error: If there's a database error
-        Exception: For other unexpected errors
+        sqlite3.Error: If a database error occurs.
+        Exception: For other unexpected errors.
     """
     try:
         with sqlite3.connect(db_path) as conn:
             conn.row_factory = sqlite3.Row
             cursor = conn.cursor()
             cursor.execute('SELECT * FROM results')
-
-            chats = {}
-            for row in cursor.fetchall():
-                row_dict = dict(row)
-                chat_id = row_dict['SubmissionChatID']
-                chats[chat_id] = row_dict
-
-            return chats
+            return [dict(row) for row in cursor.fetchall()]
 
     except sqlite3.Error as e:
         print(f"SQLite error: {e}")
@@ -82,74 +35,6 @@ def get_submission_chats(db_path: Path) -> Dict[str, Dict[str, Any]]:
         print(f"Error querying database: {e}")
         raise
 
-def get_submissions(db_path: Path) -> Dict[str, Dict[str, Any]]:
-    """Query the SQLite database and extract all submissions.
-
-    Args:
-        db_path: Path to the SQLite database file
-
-    Returns:
-        Dictionary with SubmissionID as keys and submission data as values
-
-    Raises:
-        sqlite3.Error: If there's a database error
-        Exception: For other unexpected errors
-    """
-    try:
-        with sqlite3.connect(db_path) as conn:
-            conn.row_factory = sqlite3.Row
-            cursor = conn.cursor()
-            # cursor.execute('SELECT * FROM results')
-            cursor.execute('SELECT SubmissionID, UserID, SubmissionDate, SubmissionReference FROM results')
-
-            submissions = {}
-            for row in cursor.fetchall():
-                row_dict = dict(row)
-                submission_id = row_dict['SubmissionID']
-                submissions[submission_id] = row_dict
-
-            return submissions
-
-    except sqlite3.Error as e:
-        print(f"SQLite error: {e}")
-        raise
-    except Exception as e:
-        print(f"Error querying database: {e}")
-        raise
-
-def get_users(db_path: Path) -> Dict[str, Dict[str, Any]]:
-    """Query the SQLite database and extract all users.
-
-    Args:
-        db_path: Path to the SQLite database file
-
-    Returns:
-        Dictionary with UserID as keys and user data as values
-
-    Raises:
-        sqlite3.Error: If there's a database error
-        Exception: For other unexpected errors
-    """
-    try:
-        with sqlite3.connect(db_path) as conn:
-            conn.row_factory = sqlite3.Row
-            cursor = conn.cursor()
-            cursor.execute('SELECT * FROM results')
-
-            users = {}
-            for row in cursor.fetchall():
-                row_dict = dict(row)
-                user_id = row_dict['UserID']
-                users[user_id] = row_dict
-
-            return users
-
-    except sqlite3.Error as e:
-        print(f"SQLite error: {e}")
-        raise
-    except Exception as e:
-        print(f"Error querying database: {e}")
-        raise
 
 def save_stats_to_json(data: Dict[str, Any], output_path: Path) -> None:
     """Save data to a JSON file.
@@ -216,7 +101,7 @@ def execute_query(params: ContainerParams) -> bool:
 
 def process_results(params: ContainerParams) -> None:
     """Process query results and generate stats file."""
-    messages = get_chat_messages(params.db_path)
+    messages = get_data(params.db_path)
 
     if messages:
         print(f"Found {len(messages)} chat messages in the database!")
@@ -224,39 +109,6 @@ def process_results(params: ContainerParams) -> None:
     else:
         print("No chat messages found in the database!")
         save_stats_to_json({}, params.stats_path)
-
-# def process_results(params: ContainerParams) -> None:
-#     """Process query results and generate stats file."""
-#     chats = get_submission_chats(params.db_path)
-
-#     if chats:
-#         print(f"Found {len(chats)} chats in the database!")
-#         save_stats_to_json(chats, params.stats_path)
-#     else:
-#         print("No chats found in the database!")
-#         save_stats_to_json({}, params.stats_path)
-
-# def process_results(params: ContainerParams) -> None:
-#     """Process query results and generate stats file."""
-#     submissions = get_submissions(params.db_path)
-
-#     if submissions:
-#         print(f"Found {len(submissions)} submissions in the database!")
-#         save_stats_to_json(submissions, params.stats_path)
-#     else:
-#         print("No submissions found in the database!")
-#         save_stats_to_json({}, params.stats_path)
-
-# def process_results(params: ContainerParams) -> None:
-#     """Process query results and generate stats file."""
-#     users = get_users(params.db_path)
-
-#     if users:
-#         print(f"Found {len(users)} users in the database!")
-#         save_stats_to_json(users, params.stats_path)
-#     else:
-#         print("No users found in the database!")
-#         save_stats_to_json({}, params.stats_path)
 
 def main() -> None:
     """Main entry point for the worker."""
